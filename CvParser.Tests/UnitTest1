@@ -1,0 +1,341 @@
+﻿using CvParser.Infrastructure.Services;
+using Moq;
+using Moq.Protected;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Reflection;
+using System.Text.Json;
+using Xunit;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
+using CvParser.Web;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+
+
+namespace CvParser.Tests
+{
+    public class OpenAiServiceTests
+    {
+        private class TestableOpenAiService : OpenAiService
+        {
+            private readonly string _schemaMock;
+            public TestableOpenAiService(HttpClient client, string schemaMock) : base(client)
+            {
+                _schemaMock = schemaMock;
+            }
+
+            protected override Task<string> ReadEmbeddedResourceAsync(string resourceName)
+            {
+                return Task.FromResult(_schemaMock);
+            }
+        }
+
+
+        [Fact]
+        public async Task GenerateContentAsync_ReturnsExpectedJson()
+        {
+            // Arrange: fake OpenAI response
+            var fakeResponse = """
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "{ \\"name\\": \\"John Doe\\" }"
+                        }
+                    }
+                ]
+            }
+            """;
+
+            var handlerMock = new Mock<HttpMessageHandler>();
+            handlerMock.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>()
+                )
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent(fakeResponse)
+                });
+
+            var httpClient = new HttpClient(handlerMock.Object)
+            {
+                BaseAddress = new System.Uri("https://api.openai.com/")
+            };
+
+            var service = new TestableOpenAiService(httpClient, "{ \"type\": \"object\" }");
+
+            // Act
+            var result = await service.GenerateContentAsync("Test prompt");
+
+            // Assert
+            Assert.Equal("{ \"name\": \"John Doe\" }", result);
+        }
+    }
+
+
+    public class EmbeddedResourceTests
+    {
+        [Fact]
+        public void JsonResumeSchema_Should_BeEmbedded_AndValidJson()
+        {
+            // Arrange
+            var assembly = typeof(CvParser.Infrastructure.Services.OpenAiService).Assembly;
+            var resourceNames = assembly.GetManifestResourceNames();
+            var targetName = resourceNames.FirstOrDefault(n => n.EndsWith("JsonResumeSchema.json", StringComparison.OrdinalIgnoreCase));
+
+            // Assert: resource ska finnas
+            Assert.False(string.IsNullOrEmpty(targetName), "JsonResumeSchema.json kunde inte hittas som embedded resource.");
+
+            // Act: läsa in
+            using var stream = assembly.GetManifestResourceStream(targetName);
+            Assert.NotNull(stream);
+
+            using var reader = new StreamReader(stream!);
+            var json = reader.ReadToEnd();
+
+            // Assert: kolla att JSON är giltig
+            using var doc = JsonDocument.Parse(json);
+            Assert.NotNull(doc.RootElement);
+        }
+    }
+
+
+    public class OpenAiServiceIntegrationTests
+    {
+        [Fact]
+        public async Task GenerateContentAsync_Should_UseEmbeddedSchema_AndReturnParsedResult()
+        {
+            // Arrange
+            var schemaJson = ReadEmbeddedSchema();
+
+            // Mocka HttpClientFactory för att inte göra riktiga API-anrop
+            var fakeAiService = new Mock<IAiService>();
+
+            // Anta att AI-tjänsten ska returnera ett exempel-CV i JSON
+            var fakeApiResponse = @"{
+                ""name"": ""John Doe"",
+                ""work"": [
+                    { ""company"": ""ACME Inc"", ""position"": ""Developer"", ""startDate"": ""2020-01-01"" }
+                ]
+            }";
+
+            fakeAiService
+                .Setup(s => s.GenerateContentAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(fakeApiResponse);
+
+            var cvService = new CvService(fakeAiService.Object);
+
+            // Act
+            var resultJson = await cvService.GenerateContentAsync("My CV text here");
+
+            // Assert: Kolla att JSON faktiskt går att parsa
+            using var doc = JsonDocument.Parse(resultJson);
+            Assert.Equal("John Doe", doc.RootElement.GetProperty("name").GetString());
+        }
+
+        private string ReadEmbeddedSchema()
+        {
+            var assembly = typeof(OpenAiService).Assembly;
+            var resourceName = assembly
+                .GetManifestResourceNames()
+                .FirstOrDefault(n => n.EndsWith("JsonResumeSchema.json", StringComparison.OrdinalIgnoreCase));
+
+            Assert.False(string.IsNullOrEmpty(resourceName), "JsonResumeSchema.json kunde inte hittas som embedded resource.");
+
+            using var stream = assembly.GetManifestResourceStream(resourceName!);
+            using var reader = new StreamReader(stream!);
+            return reader.ReadToEnd();
+        }
+    }
+
+
+    public class OpenAiServiceFullIntegrationTests
+        : IClassFixture<WebApplicationFactory<Program>>
+    {
+        private readonly WebApplicationFactory<Program> _factory;
+
+        public OpenAiServiceFullIntegrationTests(WebApplicationFactory<Program> factory)
+        {
+            // Skapa en WebApplicationFactory som använder din riktiga Program.cs
+            _factory = factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureServices(services =>
+                {
+                    // Byt ut IAiService mot en mock
+                    var aiMock = new Mock<IAiService>();
+                    aiMock
+                        .Setup(s => s.GenerateContentAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(@"{
+                            ""name"": ""Jane Doe"",
+                            ""work"": [{ ""company"": ""ACME Inc"", ""position"": ""Lead Dev"" }]
+                        }");
+
+                    services.AddSingleton(aiMock.Object);
+                });
+            });
+        }
+
+        [Fact]
+        public async Task Should_Return_ParsedCV_From_Api()
+        {
+            // Arrange
+            var client = _factory.CreateClient();
+
+            // Här kan du anropa din riktiga Controller/Endpoint som använder CvService
+            var requestContent = new StringContent(
+                JsonSerializer.Serialize(new { text = "My CV text" }),
+                Encoding.UTF8,
+                "application/json");
+
+            // Act
+            var response = await client.PostAsync("/api/cv/generate", requestContent);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            var jsonString = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(jsonString);
+
+            Assert.Equal("Jane Doe", doc.RootElement.GetProperty("name").GetString());
+        }
+    }
+
+
+    public class OpenAiServiceFullIntegrationTests
+        : IClassFixture<WebApplicationFactory<Program>>
+    {
+        private readonly WebApplicationFactory<Program> _factory;
+
+        public OpenAiServiceFullIntegrationTests(WebApplicationFactory<Program> factory)
+        {
+            _factory = factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureServices(services =>
+                {
+                    var aiMock = new Mock<IAiService>();
+                    aiMock
+                        .Setup(s => s.GenerateContentAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(@"{
+                            ""name"": ""Jane Doe"",
+                            ""work"": [{ ""company"": ""ACME Inc"", ""position"": ""Lead Dev"" }]
+                        }");
+
+                    services.AddSingleton(aiMock.Object);
+                });
+            });
+        }
+
+        [Fact]
+        public async Task Should_Return_ParsedCV_From_Api()
+        {
+            var client = _factory.CreateClient();
+
+            var requestContent = new StringContent(
+                JsonSerializer.Serialize(new { text = "My CV text" }),
+                Encoding.UTF8,
+                "application/json");
+
+            var response = await client.PostAsync("/api/cv/generate", requestContent);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            var jsonString = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(jsonString);
+
+            Assert.Equal("Jane Doe", doc.RootElement.GetProperty("name").GetString());
+        }
+
+        [Fact]
+        public void Should_Load_JsonResumeSchema_Embedded_Resource()
+        {
+            // Byt till rätt namespace + filnamn
+            var resourceName = "CvParser.Infrastructure.JsonResumeSchema.json";
+
+            var assembly = typeof(IAiService).Assembly; // Samma assembly som filen ska ligga i
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+
+            Assert.NotNull(stream); // Filen finns som embedded resource
+
+            using var reader = new StreamReader(stream);
+            var content = reader.ReadToEnd();
+
+            Assert.False(string.IsNullOrWhiteSpace(content)); // Filen är inte tom
+
+            // Validera att det är giltig JSON
+            using var _ = JsonDocument.Parse(content);
+        }
+    }
+    
+
+    public class CvParserEndToEndWithSchemaValidationTests 
+        : IClassFixture<WebApplicationFactory<Program>>
+    {
+        private readonly WebApplicationFactory<Program> _factory;
+
+        public CvParserEndToEndWithSchemaValidationTests(WebApplicationFactory<Program> factory)
+        {
+            _factory = factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureServices(services =>
+                {
+                    var aiMock = new Mock<IAiService>();
+                    aiMock
+                        .Setup(s => s.GenerateContentAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(@"{
+                            ""name"": ""Jane Doe"",
+                            ""work"": [{ ""company"": ""ACME Inc"", ""position"": ""Lead Dev"" }]
+                        }");
+
+                    services.AddSingleton(aiMock.Object);
+                });
+            });
+        }
+
+        [Fact]
+        public async Task CvParser_Should_Return_Valid_Json_Against_Schema()
+        {
+            var client = _factory.CreateClient();
+
+            // Steg 1 – Gör API-anrop
+            var requestContent = new StringContent(
+                JsonSerializer.Serialize(new { text = "My CV text" }),
+                Encoding.UTF8,
+                "application/json");
+
+            var response = await client.PostAsync("/api/cv/generate", requestContent);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            var jsonString = await response.Content.ReadAsStringAsync();
+
+            // Steg 2 – Ladda schemat från embedded resource
+            var schemaResource = "CvParser.Infrastructure.JsonResumeSchema.json";
+            var assembly = typeof(IAiService).Assembly;
+            using var stream = assembly.GetManifestResourceStream(schemaResource);
+            Assert.NotNull(stream);
+
+            using var reader = new StreamReader(stream);
+            var schemaJson = reader.ReadToEnd();
+
+            var schema = await JsonSchema.FromJsonAsync(schemaJson);
+
+            // Steg 3 – Validera JSON-svaret mot schemat
+            var errors = schema.Validate(jsonString);
+
+            // Om validering misslyckas ser vi direkt varför
+            Assert.True(errors.Count == 0, $"Schema validation failed: {string.Join(", ", errors)}");
+
+            // Steg 4 – Extra check att datan är rätt
+            using var doc = JsonDocument.Parse(jsonString);
+            Assert.Equal("Jane Doe", doc.RootElement.GetProperty("name").GetString());
+        }
+    }
+}
+

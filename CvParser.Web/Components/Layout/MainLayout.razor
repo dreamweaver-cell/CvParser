@@ -1,0 +1,63 @@
+﻿@inherits LayoutComponentBase
+
+<HeadContent>
+    <!-- Här kan du lägga extra CSS om du vill -->
+    <link rel="stylesheet" href="css/site.css" />
+</HeadContent>
+
+<div class="d-flex" style="min-height:100vh;">
+    <!-- Sidebar -->
+    <nav class="sidebar bg-light border-end p-3">
+        <NavMenu />
+    </nav>
+
+    <!-- Main content -->
+    <div class="flex-grow-1 d-flex flex-column">
+        <!-- Top bar -->
+        <header class="top-row px-4 py-2 border-bottom d-flex justify-content-between align-items-center">
+            <h5 class="m-0">CvParser</h5>
+            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank" class="btn btn-link">About</a>
+        </header>
+
+        <!-- Page content -->
+        <main class="content p-4 flex-grow-1">
+            @Body
+        </main>
+    </div>
+</div>
+
+<!-- Blazor error UI -->
+<div id="blazor-error-ui" data-nosnippet>
+    Ett fel har uppstått.
+    <a href="." class="reload">Ladda om</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+
+
+
+@*
+@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+*@

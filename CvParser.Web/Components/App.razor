@@ -1,0 +1,37 @@
+﻿@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using CvParser.Web.Components.Layout
+@rendermode InteractiveServer
+
+<Router AppAssembly="@typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Inte hittad</PageTitle>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <p role="alert">Sidan kunde inte hittas.</p>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+
+
+@*
+@code {
+    [Inject] private JSRunner JsRunner { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            JsRunner.MarkAsReady();
+        }
+    }
+}
+
+    <script src="_framework/blazor.server.js"></script>
+</body>
+</html>
+*@

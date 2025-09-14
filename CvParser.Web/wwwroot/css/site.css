@@ -1,0 +1,70 @@
+/* wwwroot/css/site.css */
+
+/* Grundinställningar */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Albert Sans', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 250px;
+    min-height: 100vh;
+    background-color: #ffffff;
+    border-right: 1px solid #dee2e6;
+    padding: 1rem;
+}
+
+/* NavMenu-länkar */
+.sidebar a {
+    display: block;
+    padding: 0.5rem 0;
+    color: #212529;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.sidebar a:hover {
+    color: #0d6efd;
+    text-decoration: none;
+}
+
+/* Top bar / header */
+.top-row {
+    background-color: #e9ecef;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0.5rem 1rem;
+}
+
+/* Content area */
+.content {
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+/* Blazor error UI */
+#blazor-error-ui {
+    background-color: #f8d7da;
+    color: #842029;
+    border: 1px solid #f5c2c7;
+    padding: 1rem;
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    border-radius: 0.5rem;
+    display: none; /* visas bara vid fel */
+}
+
+/* Länkar i content */
+.content a {
+    color: #0d6efd;
+    text-decoration: none;
+}
+
+.content a:hover {
+    text-decoration: underline;
+}

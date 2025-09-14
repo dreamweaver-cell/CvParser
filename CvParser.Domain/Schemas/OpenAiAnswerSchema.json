@@ -1,0 +1,155 @@
+﻿{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Cv",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "PersonalInfo": {
+            "$ref": "#/definitions/PerosnalInformation"
+        },
+        "Summary": {
+            "type": "string"
+        },
+        "Educations": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/Education"
+            }
+        },
+        "Employers": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/Employer"
+            }
+        },
+        "WorkProjects": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/WorkProject"
+            }
+        },
+        "Competencies": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/Competency"
+            }
+        },
+        "Languages": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/Language"
+            }
+        },
+        "Other": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    },
+    "definitions": {
+        "PerosnalInformation": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "Name": {
+                    "type": "string"
+                },
+                "Title": {
+                    "type": "string"
+                },
+                "Birthplace": {
+                    "type": "string"
+                },
+                "Email": {
+                    "type": "string"
+                },
+                "PhoneNumer": {
+                    "type": "string"
+                },
+                "Picture": {
+                    "type": "string",
+                    "format": "byte"
+                }
+            }
+        },
+        "Education": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "Degree": {
+                    "type": "string"
+                },
+                "Institution": {
+                    "type": "string"
+                },
+                "Period": {
+                    "type": "string"
+                }
+            }
+        },
+        "Employer": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "Company": {
+                    "type": "string"
+                },
+                "Position": {
+                    "type": "string"
+                },
+                "Period": {
+                    "type": "string"
+                }
+            }
+        },
+        "WorkProject": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "Name": {
+                    "type": "string"
+                },
+                "Posiiton": {
+                    "type": "string"
+                },
+                "Period": {
+                    "type": "string"
+                },
+                "Description": {
+                    "type": "string"
+                },
+                "Technologies": {
+                    "type": "string"
+                }
+            }
+        },
+        "Competency": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "Name": {
+                    "type": "string"
+                },
+                "Level": {
+                    "type": [
+                        "null",
+                        "string"
+                    ]
+                }
+            }
+        },
+        "Language": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "Name": {
+                    "type": "string"
+                },
+                "Level": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,140 @@
+@page "/"
+@namespace YourAppName.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YourAppName</title>
+    <base href="~/" />
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link href="css/site.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css?family=Albert+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="CvParser.Web.styles.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+
+    <HeadOutlet />
+</head>
+<body>
+    <component type="typeof(App)" render-mode="Server" />
+
+    <div id="blazor-error-ui">
+        <environment include="Staging,Production">
+            Ett fel har uppstått. Denna applikation kan inte hanteras.
+        </environment>
+        <environment include="Development">
+            Ett undantag har uppstått. Se webbläsarens utvecklarverktyg för mer information.
+            <a href="" class="reload">Ladda om</a>
+            <a class="dismiss">x</a>
+        </environment>
+    </div>
+    
+    <script src="_framework/blazor.server.js"></script>
+    <script src="js/download.js"></script>
+</body>
+</html>
+
+
+
+@*
+@page "/"
+@namespace YourAppName.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YourAppName</title>
+    <base href="~/" />
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link href="css/site.css" rel="stylesheet" />
+    <link href="YourAppName.styles.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css?family=Albert+Sans:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <component type="typeof(App)" render-mode="Server" />
+
+    <div id="blazor-error-ui">
+        <environment include="Staging,Production">
+            Ett fel har uppstått. Denna applikation kan inte hanteras.
+        </environment>
+        <environment include="Development">
+            Ett undantag har uppstått. Se webbläsarens utvecklarverktyg för mer information.
+            <a href="" class="reload">Ladda om</a>
+            <a class="dismiss">x</a>
+        </environment>
+    </div>
+
+    <script src="_framework/blazor.server.js"></script>
+    <script src="js/download.js"></script>
+</body>
+</html>
+
+*@
+
+
+
+
+@*
+@page "/"
+@namespace YourAppName.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YourAppName</title>
+    <base href="~/" />
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link href="css/site.css" rel="stylesheet" />
+    <link href="YourAppName.styles.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css?family=Albert+Sans:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <component type="typeof(App)" render-mode="ServerPrerendered" />
+
+    <div id="blazor-error-ui">
+        <environment include="Staging,Production">
+            Ett fel har uppstått. Denna applikation kan inte hanteras.
+        </environment>
+        <environment include="Development">
+            Ett undantag har uppstått. Se webbläsarens utvecklarverktyg för mer information.
+            <a href="" class="reload">Ladda om</a>
+            <a class="dismiss">x</a>
+        </environment>
+    </div>
+
+    <script src="js/onlyOffice.js"></script>
+    <script src="_framework/blazor.server.js"></script>
+
+    <script>
+        window.downloadFile = (fileName, contentType, base64Data) => {
+            const link = document.createElement('a');
+            link.download = fileName;
+            link.href = `data:${contentType};base64,${base64Data}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+    </script>
+
+
+</body>
+</html>
+*@

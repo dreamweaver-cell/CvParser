@@ -1,0 +1,11 @@
+﻿global using CvParser.Domain.Models;
+global using CvParser.Data;
+global using CvParser.Domain.Entities;
+global using CvParser.Infrastructure.Interfaces;
+global using CvParser.Web.Components;
+global using CvParser.Web.Components.Account;
+global using Microsoft.AspNetCore.Components.Authorization;
+global using Microsoft.AspNetCore.Identity;
+global using Microsoft.AspNetCore.Identity.UI.Services;
+global using Microsoft.AspNetCore.Mvc;
+global using Microsoft.EntityFrameworkCore;

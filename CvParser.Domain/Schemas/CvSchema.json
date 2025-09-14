@@ -1,0 +1,64 @@
+{
+  "personalInformation": {
+    "name": "string",
+    "title": "string",
+    "birthplace": "string",
+    "email": "string",
+    "phoneNumber": "string",
+    "imageBase64": "string (optional, base64-encoded image)",
+    "picture": "byte[] (optional, binary image as base64)"
+  },
+  "summary": "string",
+  "educations": [
+    {
+      "title": "string",
+      "degree": "string",
+      "institution": "string",
+      "period": "string",
+      "startDate": "string (YYYY-MM)",
+      "endDate": "string (YYYY-MM or 'Present')",
+      "studyType": "string"
+    }
+  ],
+  "employers": [
+    {
+      "company": "string",
+      "position": "string",
+      "period": "string"
+    }
+  ],
+  "workExperiences": [
+    {
+      "workExperience": "string",
+      "companyName": "string",
+      "position": "string",
+      "startDate": "string (YYYY-MM)",
+      "endDate": "string (YYYY-MM or 'Present')",
+      "description": "string",
+      "technologies": "string"
+    }
+  ],
+  "competencies": [
+    {
+      "name": "string",
+      "level": "string",
+      "keywords": [ "string" ],
+      "isMainSkill": "boolean",
+      "skillCategory": "string"
+    }
+  ],
+  "certificates": [
+    {
+      "name": "string",
+      "institution": "string"
+    }
+  ],
+  "languages": [
+    {
+      "language": "string",
+      "level": "string",
+      "fluency": "string"
+    }
+  ],
+  "other": [ "string" ]
+}

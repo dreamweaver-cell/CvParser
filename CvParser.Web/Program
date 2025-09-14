@@ -1,0 +1,269 @@
+using CvParser.Infrastructure.Interfaces;
+using CvParser.Infrastructure.Services;
+using CvParser.Data;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using CvParser.Web;
+using CvParser.Web.Components;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Hosting;
+using System;
+using System.Net.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
+
+namespace CvParser.Web
+{
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
+
+            // Add services to the container.
+            builder.Services.AddRazorComponents()
+                .AddInteractiveServerComponents();
+
+            builder.Services.AddRazorPages();
+            builder.Services.AddControllersWithViews()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.PropertyNamingPolicy = null;
+                });
+            
+            // Registrerar IAiService och en HttpClient specifikt för den.
+            // Detta är det bästa sättet att hantera HttpClient i DI-systemet
+            // och säkerställer att det inte orsakar problem med trådhanteringen.
+            builder.Services.AddHttpClient<IAiService, OpenAiService>();
+
+            // Registrera övriga applikationstjänster
+            builder.Services.AddScoped<IPdfService, PdfService>();
+            builder.Services.AddScoped<IDocxService, DocxService>();
+            builder.Services.AddScoped<IImageService, ImageService>();
+            builder.Services.AddScoped<ICvService, CvService>();
+            builder.Services.AddScoped<ISessionStorageService, SessionStorageService>();
+
+            // Identity och autentiseringstjänster
+            builder.Services.AddCascadingAuthenticationState();
+            builder.Services.AddScoped<IdentityUserAccessor>();
+            builder.Services.AddScoped<IdentityRedirectManager>();
+            builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = IdentityConstants.ApplicationScheme;
+                options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
+            })
+            .AddIdentityCookies();
+
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+            builder.Services.AddDbContext<CvParserDbContext>(options =>
+                options.UseSqlServer(connectionString));
+
+            builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+            builder.Services.AddIdentityCore<User>(options => options.SignIn.RequireConfirmedAccount = true)
+                .AddEntityFrameworkStores<CvParserDbContext>()
+                .AddSignInManager()
+                .AddDefaultTokenProviders();
+
+            builder.Services.AddSingleton<IEmailSender<User>, IdentityNoOpEmailSender>();
+
+            builder.Services.AddLogging(builder =>
+            {
+                builder.AddConsole();
+                builder.AddDebug();
+            });
+
+            // Sessions-tjänster
+            builder.Services.AddDistributedMemoryCache();
+            builder.Services.AddSession(options =>
+            {
+                options.IdleTimeout = TimeSpan.FromMinutes(20);
+                options.Cookie.HttpOnly = true;
+                options.Cookie.IsEssential = true;
+            });
+            builder.Services.AddHttpContextAccessor();
+
+            var app = builder.Build();
+
+            // Configure the HTTP request pipeline.
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseMigrationsEndPoint();
+            }
+            else
+            {
+                app.UseExceptionHandler("/Error");
+                app.UseHsts();
+            }
+
+            app.UseHttpsRedirection();
+            app.UseStaticFiles();
+            app.UseRouting();
+            app.UseSession();
+            app.MapControllers();
+            app.UseAntiforgery();
+            app.MapStaticAssets();
+            app.MapRazorComponents<App>()
+                .AddInteractiveServerRenderMode();
+            app.MapAdditionalIdentityEndpoints();
+
+            app.Run();
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------
+/*
+using CvParser.Infrastructure.Interfaces;
+using CvParser.Infrastructure.Services;
+using CvParser.Data;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using CvParser.Web;
+using CvParser.Web.Components;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Hosting;
+using System;
+using System.Net.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
+
+namespace CvParser.Web
+{
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
+
+            // Add services to the container.
+            // This is the modern way to set up Blazor components with interactive rendering.
+            builder.Services.AddRazorComponents()
+                .AddInteractiveServerComponents();
+
+            // The following registrations are generally for traditional MVC/Razor Pages and can be removed
+            // if your application is purely Blazor. However, they are kept here as they were in the original code.
+            builder.Services.AddRazorPages();
+            builder.Services.AddControllersWithViews()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.PropertyNamingPolicy = null;
+                });
+            //builder.Services.AddHttpClient();
+
+            builder.Services.AddHttpClient<IAiService, OpenAiService>();
+
+            builder.Services.AddHttpClient("LocalApi", client =>
+            {
+                var baseUrl = builder.Configuration["ApiSettings:BaseUrl"] ?? throw new ArgumentNullException("ApiSettings:BaseUrl must be set in configuration.");
+                client.BaseAddress = new Uri(baseUrl); // Default to localhost for development
+            });
+            
+            // Register application services. Using AddScoped is appropriate for Blazor Server apps.
+            builder.Services.AddScoped<IPdfService, PdfService>();
+            builder.Services.AddScoped<IDocxService, DocxService>();
+            builder.Services.AddScoped<IImageService, ImageService>();
+            builder.Services.AddScoped<ICvService, CvService>();
+            builder.Services.AddScoped<ISessionStorageService, SessionStorageService>();
+
+            // Identity and authentication services
+            builder.Services.AddCascadingAuthenticationState();
+            builder.Services.AddScoped<IdentityUserAccessor>();
+            builder.Services.AddScoped<IdentityRedirectManager>();
+            builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = IdentityConstants.ApplicationScheme;
+                options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
+            })
+            .AddIdentityCookies();
+
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+            // Register the DbContext for the application
+            builder.Services.AddDbContext<CvParserDbContext>(options =>
+                options.UseSqlServer(connectionString));
+
+            builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+            builder.Services.AddIdentityCore<User>(options => options.SignIn.RequireConfirmedAccount = true)
+                .AddEntityFrameworkStores<CvParserDbContext>()
+                .AddSignInManager()
+                .AddDefaultTokenProviders();
+
+            builder.Services.AddSingleton<IEmailSender<User>, IdentityNoOpEmailSender>();
+
+            // Configure logging
+            builder.Services.AddLogging(builder =>
+            {
+                builder.AddConsole();
+                builder.AddDebug();
+            });
+
+            // Add session services. This is for server-side session state.
+            builder.Services.AddDistributedMemoryCache();
+            builder.Services.AddSession(options =>
+            {
+                options.IdleTimeout = TimeSpan.FromMinutes(20);  // Set session timeout
+                options.Cookie.HttpOnly = true;  // Make the cookie HttpOnly for security
+                options.Cookie.IsEssential = true;  // Essential cookie for session tracking
+            });
+            builder.Services.AddHttpContextAccessor();  // Add HttpContextAccessor for session access
+
+            var app = builder.Build();
+
+            // Configure the HTTP request pipeline.
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseMigrationsEndPoint();
+            }
+            else
+            {
+                app.UseExceptionHandler("/Error");
+                app.UseHsts();
+            }
+
+            app.UseHttpsRedirection();
+            app.UseStaticFiles();
+            app.UseRouting();
+
+            // Enable session middleware
+            app.UseSession();
+
+            app.MapControllers();
+            app.UseAntiforgery();
+
+            app.MapStaticAssets();
+            app.MapRazorComponents<App>()
+                .AddInteractiveServerRenderMode();
+
+            // Add additional endpoints required by the Identity /Account Razor components.
+            app.MapAdditionalIdentityEndpoints();
+
+            app.Run();
+        }
+    }
+}
+*/

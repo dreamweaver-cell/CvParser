@@ -1,0 +1,35 @@
+--2025-07-24 12:44:57--  https://aka.ms/dotnet-core-applaunch?framework=Microsoft.AspNetCore.App
+Läste in CA-certifikatet ”/etc/ssl/certs/ca-certificates.crt”
+Slår upp aka.ms (aka.ms)... 23.61.241.152
+Ansluter till aka.ms (aka.ms)|23.61.241.152|:443 … ansluten.
+HTTP-begäran skickad, väntar på svar... 301 Moved Permanently
+Adress: https://dotnet.microsoft.com/get-dotnet/dotnet-core?framework=Microsoft.AspNetCore.App [följer]
+--2025-07-24 12:44:57--  https://dotnet.microsoft.com/get-dotnet/dotnet-core?framework=Microsoft.AspNetCore.App
+Slår upp dotnet.microsoft.com (dotnet.microsoft.com)... 13.107.246.53, 2620:1ec:bdf::53
+Ansluter till dotnet.microsoft.com (dotnet.microsoft.com)|13.107.246.53|:443 … ansluten.
+HTTP-begäran skickad, väntar på svar... 302 Found
+Adress: https://dotnet.microsoft.com/download/dotnet/?cid=getdotnetcore [följer]
+--2025-07-24 12:44:58--  https://dotnet.microsoft.com/download/dotnet/?cid=getdotnetcore
+Återanvänder befintlig anslutning till dotnet.microsoft.com:443.
+HTTP-begäran skickad, väntar på svar... 301 Moved Permanently
+Kaka som kommer från dotnet.microsoft.com försökte ställa in domän till dotnetwebsite.azurewebsites.net
+Kaka som kommer från dotnet.microsoft.com försökte ställa in domän till dotnetwebsite.azurewebsites.net
+Adress: /download/dotnet?cid=getdotnetcore [följer]
+--2025-07-24 12:44:59--  https://dotnet.microsoft.com/download/dotnet?cid=getdotnetcore
+Återanvänder befintlig anslutning till dotnet.microsoft.com:443.
+HTTP-begäran skickad, väntar på svar... 302 Found
+Kaka som kommer från dotnet.microsoft.com försökte ställa in domän till dotnetwebsite.azurewebsites.net
+Kaka som kommer från dotnet.microsoft.com försökte ställa in domän till dotnetwebsite.azurewebsites.net
+Adress: /en-us/download/dotnet?cid=getdotnetcore [följer]
+--2025-07-24 12:45:00--  https://dotnet.microsoft.com/en-us/download/dotnet?cid=getdotnetcore
+Återanvänder befintlig anslutning till dotnet.microsoft.com:443.
+HTTP-begäran skickad, väntar på svar... 200 OK
+Kaka som kommer från dotnet.microsoft.com försökte ställa in domän till dotnetwebsite.azurewebsites.net
+Kaka som kommer från dotnet.microsoft.com försökte ställa in domän till dotnetwebsite.azurewebsites.net
+Längd: ospecificerat [text/html]
+Sparar till: ”dotnet-core-applaunch?framework=Microsoft.AspNetCore.App”
+
+                 dotnet-core-appl     [<=>                                                          ]       0  --.-KB/s               dotnet-core-applaunch?framework=M     [ <=>                                                         ] 293,64K  1,67MB/s    om 0,2s    
+
+2025-07-24 12:45:00 (1,67 MB/s) - ”dotnet-core-applaunch?framework=Microsoft.AspNetCore.App” sparades [300686]
+

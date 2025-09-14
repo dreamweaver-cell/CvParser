@@ -1,0 +1,13 @@
+@page "/test"
+@inject IJSRuntime JsRuntime
+
+<h3>Testa JS</h3>
+<button @onclick="DownloadTest">Testa saveAsFile()</button>
+
+@code {
+    private async Task DownloadTest()
+    {
+        var data = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("Hej världen!"));
+        await JsRuntime.InvokeVoidAsync("saveAsFile", "test.txt", data);
+    }
+}

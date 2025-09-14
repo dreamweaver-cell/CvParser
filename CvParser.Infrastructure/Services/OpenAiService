@@ -1,0 +1,262 @@
+using CvParser.Infrastructure.Interfaces;
+using Microsoft.AspNetCore.Http; // Added for IFormFile
+using Microsoft.Extensions.Configuration;
+using System;
+using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+namespace CvParser.Infrastructure.Services
+{
+    public class OpenAiService : IAiService
+    {
+        // Vi använder nu en enda HttpClient-instans för bättre prestanda.
+        private readonly HttpClient _httpClient;
+        private readonly IConfiguration _configuration;
+        private readonly string? _apiKey;
+
+        private readonly string _uploadUrl = "https://api.openai.com/v1/files";
+        private readonly string _completionUrl = "https://api.openai.com/v1/chat/completions";
+        private readonly string _aiModel = "gpt-5-nano";
+        private readonly string _question = "Extract all the important data from this Resume. Personal info like name, title, phone number, email and photo etc. As well as skills, education, work projects & employments. Return the result as a JSON.";
+
+        /// <summary>
+        /// Konstruktorn använder dependency injection för att få tillgång till IConfiguration
+        /// och HttpClient, vilket är rekommenderad praxis.
+        /// </summary>
+        public OpenAiService(HttpClient httpClient, IConfiguration configuration)
+        {
+            _httpClient = httpClient;
+            _configuration = configuration;
+            _apiKey = configuration["ApiKey"];
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        }
+
+        public async Task<string> GenerateContentAsync(string prompt)
+        {
+            // Hämta API-nyckeln från konfigurationen
+            var apiKey = _configuration["AiServiceSettings:ApiKey"];
+
+            // Kontrollera att API-nyckeln finns
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                throw new InvalidOperationException("API key for AI service is not configured.");
+            }
+
+            // Här gör vi anropet till AI-tjänsten med den injicerade _httpClient-instansen.
+            // Du kan nu använda _httpClient för att skicka en HttpRequestMessage.
+            // Följande kod är ett exempel på hur anropet kan se ut.
+            var requestBody = new
+            {
+                prompt = prompt,
+                // ... andra parametrar för din AI-modell
+            };
+
+            var content = new StringContent(
+                JsonSerializer.Serialize(requestBody),
+                Encoding.UTF8,
+                "application/json"
+            );
+
+            // Vi använder _httpClient för att göra POST-anropet
+            // och lägger till API-nyckeln i headern
+            _httpClient.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+
+            var response = await _httpClient.PostAsync("api/endpoint/för/ai-modell", content);
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        /// <summary>
+        /// Implementerar IAiService-metoden för att skicka CV-texten till OpenAI för bearbetning.
+        /// </summary>
+        /// <param name="cvText">Texten från CV:t.</param>
+        /// <returns>En sträng med det genererade JSON-svaret.</returns>
+        public async Task<string> SendCvAsync(string cvText)
+        {
+            try
+            {
+                // Denna metod anropar nu den privata metoden för att skicka frågan.
+                var answer = await GenerateContentAsync(cvText);
+                return answer;
+            }
+            catch (Exception ex)
+            {
+                // Kasta ett exception för att meddela anropande kod om felet.
+                throw new Exception("Error processing the CV", ex);
+            }
+        }
+
+        /// <summary>
+        /// Implementerar IAiService-metoden för att ladda upp en fil till AI-tjänsten.
+        /// </summary>
+        /// <param name="file">Filen som ska laddas upp.</param>
+        /// <returns>Fil-ID från AI-tjänsten.</returns>
+        public async Task<string> UploadFileToAI(IFormFile file)
+        {
+            try
+            {
+                var formData = new MultipartFormDataContent();
+                var fileContent = new ByteArrayContent(await GetFileBytes(file));
+                fileContent.Headers.Add("Content-Type", "application/octet-stream");
+                formData.Add(fileContent, "file", file.FileName);
+                formData.Add(new StringContent("user_data"), "purpose");
+
+                var response = await _httpClient.PostAsync(_uploadUrl, formData);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseString = await response.Content.ReadAsStringAsync();
+                    var fileId = GetFileId(responseString);
+                    return fileId;
+                }
+                else
+                {
+                    var errorResponse = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"File upload failed: {response.ReasonPhrase} - {errorResponse}");
+                }
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
+        }
+
+        /// <summary>
+        /// Implementerar metoden från gränssnittet för att skicka en fråga till OpenAI API.
+        /// </summary>
+        /// <param name="cvText">Texten som ska skickas som prompt.</param>
+        /// <returns>JSON-svaret från AI-tjänsten.</returns>
+        public async Task<string> GenerateContentAsync(string cvText)
+        {
+            try
+            {
+                // Läs in JSON-schemat från fil. Notera att sökvägen är hårdkodad,
+                // vilket bör ändras till en dynamisk sökväg i en produktionsmiljö.
+                var schema = await File.ReadAllTextAsync(@"C:\_DEV\CvParser\CvParser.Domain\Schemas\JsonResumeSchema.json");
+
+                var requestBody = new
+                {
+                    model = _aiModel,
+                    messages = new[]
+                    {
+                        new { role = "user", content = _question + "\n\n\n" + cvText + "\n\n\n Use the following schema in the json response:\n" + schema },
+                    },
+                    max_completion_tokens = 5000
+                };
+
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PostAsync(_completionUrl, content);
+                response.EnsureSuccessStatusCode();
+
+                var responseString = await response.Content.ReadAsStringAsync();
+                using var jsonDoc = JsonDocument.Parse(responseString);
+                var reply = jsonDoc.RootElement
+                    .GetProperty("choices")[0]
+                    .GetProperty("message")
+                    .GetProperty("content")
+                    .GetString();
+
+                return reply;
+            }
+            catch (Exception ex)
+            {
+                // Returnerar en tom sträng vid fel.
+                return "";
+            }
+        }
+
+        #region HELPERS
+        private async Task<byte[]> GetFileBytes(IFormFile file)
+        {
+            using (var memoryStream = new MemoryStream())
+            {
+                await file.CopyToAsync(memoryStream);
+                return memoryStream.ToArray();
+            }
+        }
+
+        private string GetFileId(string response)
+        {
+            JsonDocument doc = JsonDocument.Parse(response);
+            string fileId = doc.RootElement.GetProperty("id").GetString();
+
+            return fileId;
+        }
+
+        private string GetAnswer(string response)
+        {
+            JsonDocument doc = JsonDocument.Parse(response);
+            JsonElement choices = doc.RootElement.GetProperty("choices");
+            string content = choices[0].GetProperty("message").GetProperty("content").GetString();
+
+            return content;
+        }
+        #endregion
+
+
+        public async Task<string> ParseCvFromDocxAsync(IFormFile file)
+        {
+            // 1. Ladda upp filen till OpenAI och få fil-ID
+            var fileId = await UploadFileToAI(file);
+
+            // 2. Skicka en prompt till modellen med filreferensen
+            var requestBody = new
+            {
+                model = _aiModel,
+                messages = new[]
+                {
+                    new
+                    {
+                        role = "user",
+                        content = $"{_question}\n\nThe uploaded file ID is: {fileId}"
+                    },
+                },
+                max_completion_tokens = 5000
+            };
+
+        var json = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await _httpClient.PostAsync(_completionUrl, content);
+            response.EnsureSuccessStatusCode();
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        using var jsonDoc = JsonDocument.Parse(responseString);
+
+        return jsonDoc.RootElement
+            .GetProperty("choices")[0]
+            .GetProperty("message")
+            .GetProperty("content")
+            .GetString() ?? throw new Exception("OpenAI returned empty content.");
+    }
+
+        public async Task<Cv> ParseCvFromDocxAsync(Stream fileStream, string fileName)
+        {
+            // Anropa den privata metoden för att hantera filuppladdning och AI-anrop
+            var resultJson = await SendCvAsync(fileName);
+            if (string.IsNullOrWhiteSpace(resultJson))
+            {
+                return null;
+            }
+
+            using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(resultJson)))
+            {
+                return await JsonSerializer.DeserializeAsync<Cv>(stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+        }
+
+        public async Task<Cv> ParseCvFromPdfAsync(Stream fileStream, string fileName)
+        {
+            // Implementera PDF-parsing logik här
+            throw new NotImplementedException("PDF parsing is not implemented yet.");
+        }
+    }
+}

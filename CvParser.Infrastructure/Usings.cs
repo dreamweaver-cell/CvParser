@@ -1,0 +1,12 @@
+﻿global using CvParser.Domain;
+global using CvParser.Domain.Entities.CV.V2;
+global using CvParser.Infrastructure.Interfaces;
+global using Emgu.CV.CvEnum;
+global using Emgu.CV.Structure;
+global using Emgu.CV;
+global using Microsoft.AspNetCore.Http;
+global using System.Drawing;
+global using System.Drawing.Imaging;
+global using System.Text;
+global using System.Text.Json;
+global using System.Net.Http.Headers;

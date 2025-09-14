@@ -1,0 +1,12 @@
+﻿namespace CvParser.Domain.Entities.CV.V2;
+
+public class Work
+{
+    public string? CompanyName { get; set; }
+    public string? Position { get; set; }
+    public string? Url { get; set; }
+    public string? StartDate { get; set; }
+    public string? EndDate { get; set; }
+    public string? Summary { get; set; }
+    public List<string>?Highlights { get; set; }
+}
