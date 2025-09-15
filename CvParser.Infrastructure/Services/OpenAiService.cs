@@ -42,7 +42,7 @@ namespace CvParser.Infrastructure.Services
                     model = _aiModel,
                     messages = new[]
                     {
-                        new { role = "system", content = "You are a CV parser. Always return JSON that matches the provided schema. Property names must be exactly as in the schema (camelCase where shown)." },
+                        new { role = "system", content = "You are a CV parser. Always return JSON that matches the provided schema. Property names must be exactly as in the schema (camelCase where shown). Set locale = en if the main text is in english. Do not assume locale is sv" },
                         new { role = "user", content = _question + "\n\nCV text:\n" + prompt + "\n\nReturn JSON matching this schema:\n" + schema }
                     },
                     max_completion_tokens = 20000

@@ -22,4 +22,6 @@ public class Cv
     public List<Language>? Languages { get; set; }
     [JsonPropertyName("other")]
     public List<string?>? Other { get; set; }
+    [JsonPropertyName("locale")]
+    public string? Locale { get; set; }
 }

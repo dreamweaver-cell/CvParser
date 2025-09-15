@@ -31,7 +31,7 @@ namespace CvParser.Infrastructure.Services
         {
             _templatePathSv = configuration["CvServiceSettings:CvTemplatePathSv"] ?? string.Empty;
             _templatePathEn = configuration["CvServiceSettings:CvTemplatePathEn"] ?? string.Empty;
-            _defaultLocale = configuration["CvServiceSettings:DefaultLocale"] ?? "sv";
+            _defaultLocale = configuration["CvServiceSettings:DefaultLocale"]; 
             _env = env;
             _logger = logger;
             _imageService = imageService;
@@ -43,6 +43,7 @@ namespace CvParser.Infrastructure.Services
             {
                 var templateFileRel = PickTemplateByLocale(locale);
                 var templateFile = Path.Combine(_env.ContentRootPath, templateFileRel);
+                _logger.LogInformation("Using CV template at {TemplateFile} (locale={Locale})", templateFile, locale);
 
                 if (!File.Exists(templateFile))
                 {
@@ -121,7 +122,6 @@ namespace CvParser.Infrastructure.Services
                 return Result<MemoryStream?>.Failure($"Fel vid konvertering till PDF: {ex.Message}");
             }
         }
-
 
         private Dictionary<string, string> BuildReplacementMap(Cv cv)
         {
@@ -479,182 +479,3 @@ namespace CvParser.Infrastructure.Services
         }
     }
 }
-
-
-
-/*
-namespace CvParser.Infrastructure.Services;
-
-public class CvDocumentGenerator : ICvDocumentGenerator
-{
-    private readonly string _cvTemplatePath;
-    private readonly IWebHostEnvironment _env;
-    private readonly ILogger<CvDocumentGenerator> _logger;
-    private readonly IImageService _imageService;
-
-    public CvDocumentGenerator(
-        IConfiguration configuration,
-        IWebHostEnvironment env,
-        ILogger<CvDocumentGenerator> logger,
-        IImageService imageService)
-    {
-        _cvTemplatePath = configuration["CvServiceSettings:CvTemplatePath"];
-        _env = env;
-        _logger = logger;
-        _imageService = imageService;
-
-        if (string.IsNullOrEmpty(_cvTemplatePath))
-        {
-            throw new InvalidOperationException("CV template path is not configured.");
-        }
-    }
-
-    public async Task<MemoryStream> CreateXameraCV(Cv cv, string? logoBase64 = null)
-    {
-        string templateFile = Path.Combine(_env.ContentRootPath, _cvTemplatePath);
-        if (!File.Exists(templateFile))
-            throw new FileNotFoundException($"CV template file not found at: {templateFile}");
-
-        using var templateFileStream = File.OpenRead(templateFile);
-        var resultStream = new MemoryStream();
-        await templateFileStream.CopyToAsync(resultStream);
-        resultStream.Position = 0;
-
-        using (var doc = WordprocessingDocument.Open(resultStream, true))
-        {
-            if (doc.MainDocumentPart == null || doc.MainDocumentPart.Document == null)
-                throw new InvalidOperationException("Template saknar MainDocumentPart eller Document.");
-
-            CreateFirstPage(doc, cv, logoBase64);
-        }
-
-        resultStream.Position = 0;
-        return resultStream;
-    }
-
-    private void CreateFirstPage(WordprocessingDocument doc, Cv cv, string? logoBase64)
-    {
-        var body = doc.MainDocumentPart.Document.Body;
-
-        // --- Skapa en 2-kolumnstabell: vänsterprofil, högerlogotyp ---
-        var table = new Table();
-        table.Append(new TableProperties(
-            new TableWidth { Type = TableWidthUnitValues.Auto, Width = "0" },
-            new TableBorders(
-                new TopBorder { Val = BorderValues.None },
-                new BottomBorder { Val = BorderValues.None },
-                new LeftBorder { Val = BorderValues.None },
-                new RightBorder { Val = BorderValues.None }
-            )
-        ));
-
-        var grid = new TableGrid(
-            new GridColumn() { Width = "4000" },
-            new GridColumn() { Width = "8000" }
-        );
-        table.Append(grid);
-
-        var row = new TableRow();
-        var leftCell = new TableCell();
-        var rightCell = new TableCell();
-
-        // Profilbild vänster övre hörn
-        if (!string.IsNullOrEmpty(cv.PersonalInfo.ImageBase64))
-        {
-            var drawing = CreateImage(doc.MainDocumentPart, cv.PersonalInfo.ImageBase64, 150, 150);
-            leftCell.Append(new Paragraph(new Run(drawing)));
-        }
-
-        // Expertis
-        if (cv.Educations?.Any() == true)
-        {
-            leftCell.Append(new Paragraph(new Run(new Text("Expertis"))));
-            foreach (var education in cv.Educations)
-                leftCell.Append(new Paragraph(new Run(new Text($"• {education.Title}"))));
-        }
-
-        // Utbildning
-        if (cv.Educations?.Any() == true)
-        {
-            leftCell.Append(new Paragraph(new Run(new Text("Utbildning"))));
-            foreach (var edu in cv.Educations)
-                leftCell.Append(new Paragraph(new Run(new Text($"{edu.StudyType} - {edu.Institution}"))));
-        }
-
-        // Certifikat
-        if (cv.Certificates?.Any() == true)
-        {
-            leftCell.Append(new Paragraph(new Run(new Text("Certifieringar"))));
-            foreach (var cert in cv.Certificates)
-                leftCell.Append(new Paragraph(new Run(new Text(cert.Name))));
-        }
-
-        // Språk
-        if (cv.Languages?.Any() == true)
-        {
-            leftCell.Append(new Paragraph(new Run(new Text("Språk"))));
-            foreach (var lang in cv.Languages)
-                leftCell.Append(new Paragraph(new Run(new Text($"{lang.LanguageName} - {lang.Fluency}"))));
-        }
-
-        // Logotyp i höger övre hörn
-        if (!string.IsNullOrEmpty(logoBase64))
-        {
-            var drawing = CreateImage(doc.MainDocumentPart, logoBase64, 120, 120);
-            rightCell.Append(new Paragraph(new Run(drawing)));
-        }
-
-        row.Append(leftCell);
-        row.Append(rightCell);
-        table.Append(row);
-        body.Append(table);
-    }
-
-    private WPDrawing CreateImage(MainDocumentPart mainPart, string base64Image, int maxWidthPx, int maxHeightPx)
-    {
-        byte[] imageBytes = Convert.FromBase64String(base64Image);
-        using var ms = new MemoryStream(imageBytes);
-        using var img = System.Drawing.Image.FromStream(ms);
-
-        double ratioX = (double)maxWidthPx / img.Width;
-        double ratioY = (double)maxHeightPx / img.Height;
-        double ratio = Math.Min(ratioX, ratioY);
-
-        long widthEmu = (long)(img.Width * ratio * 9525);
-        long heightEmu = (long)(img.Height * ratio * 9525);
-
-        var imagePart = mainPart.AddImagePart(ImagePartType.Png);
-        ms.Position = 0;
-        imagePart.FeedData(ms);
-        string relId = mainPart.GetIdOfPart(imagePart);
-
-        return new WPDrawing(
-            new WP.Inline(
-                new WP.Extent() { Cx = widthEmu, Cy = heightEmu },
-                new WP.DocProperties() { Id = 1U, Name = "Image" },
-                new DW.Graphic(
-                    new DW.GraphicData(
-                        new PIC.Picture(
-                            new PIC.NonVisualPictureProperties(
-                                new PIC.NonVisualDrawingProperties() { Id = 0U, Name = "Image" },
-                                new PIC.NonVisualPictureDrawingProperties()
-                            ),
-                            new PIC.BlipFill(
-                                new DW.Blip() { Embed = relId },
-                                new DW.Stretch(new DW.FillRectangle())
-                            ),
-                            new PIC.ShapeProperties(
-                                new DW.Transform2D(
-                                    new DW.Offset() { X = 0, Y = 0 },
-                                    new DW.Extents() { Cx = widthEmu, Cy = heightEmu }
-                                ),
-                                new DW.PresetGeometry(new DW.AdjustValueList()) { Preset = DW.ShapeTypeValues.Rectangle }
-                            )
-                        )
-                    ) { Uri = "http://schemas.openxmlformats.org/drawingml/2006/picture" }
-                )
-            )
-        );
-    }
-}
-*/

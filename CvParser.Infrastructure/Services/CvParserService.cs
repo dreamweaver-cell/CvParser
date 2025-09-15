@@ -18,7 +18,7 @@ namespace CvParser.Infrastructure.Services
         }
 
 
-        // Wrapper for parsing CV from uploaded file
+        // Orchestrates the CV parsing process
         public async Task<Result<Cv?>> ParseCvFromUploadedFileAsync(IFormFile file)
         {
             if (file == null || file.Length == 0)

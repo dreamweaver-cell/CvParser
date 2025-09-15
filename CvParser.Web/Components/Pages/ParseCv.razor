@@ -33,24 +33,10 @@
 @if (!string.IsNullOrEmpty(cvToken))
 {
     <hr class="my-5" />
-    <h2>Ladda ner CV</h2>
-    <div class="mt-4 d-flex align-items-center gap-3">
-        <!-- Format -->
-        <select class="form-select w-auto" @bind="selectedFormat">
-            <option value="word">Word (.docx)</option>
-            <option value="pdf">PDF (.pdf)</option>
-        </select>
-
-        <!-- 🟢 Språk -->
-        <select class="form-select w-auto" @bind="selectedLang" title="Språk">
-            <option value="sv">Svenska</option>
-            <option value="en">English</option>
-        </select>
-
-        <button @onclick="DownloadCv" class="btn btn-success rounded-pill shadow px-4">
-            Ladda ner
-        </button>
-    </div>
+	<h2>Ladda ner CV</h2>
+    <button @onclick="DownloadCv" class="btn btn-success rounded-pill shadow px-4">
+    	Ladda ner
+    </button>
 }
 
 @code {
@@ -58,18 +44,15 @@
     private bool isFileSelected => selectedFile != null;
     private string? _errorMessage;
     private string? _successMessage;
-    private string? cvToken; // Token från backend
+    private string? cvToken;
     private bool showSpinner = false;
-    private string selectedFormat = "word"; // Word som standard
-    private string selectedLang = "sv";     // 🟢 Ny: språk (sv/en)
+    private string selectedFormat = "word"; // Word as standard
+    
 
     protected override async Task OnInitializedAsync()
     {
-        // Försök ladda token & språk från localStorage
         cvToken = await JS.InvokeAsync<string>("localStorage.getItem", "cvToken");
         var storedLang = await JS.InvokeAsync<string>("localStorage.getItem", "cvLang");
-        if (!string.IsNullOrWhiteSpace(storedLang))
-            selectedLang = storedLang!;
     }
 
     private void HandleFileSelected(InputFileChangeEventArgs e)
@@ -90,7 +73,7 @@
         selectedFile = file;
         _errorMessage = null;
         _successMessage = $"Fil vald: {file.Name}";
-        cvToken = null; // ny uppladdning, nollställ tidigare token
+        cvToken = null; // new upload, reset token
     }
 
     private async Task UploadCv()
@@ -142,11 +125,7 @@
             return;
         }
 
-        // Spara valt språk lokalt
-        await JS.InvokeVoidAsync("localStorage.setItem", "cvLang", selectedLang);
-
-        // Navigera till API med token, format och språk
-        var url = $"api/cv/download?token={cvToken}&format={selectedFormat}&lang={selectedLang}";
+        var url = $"api/cv/download?token={cvToken}&format={selectedFormat}";
         NavManager.NavigateTo(url, forceLoad: true);
     }
 
@@ -157,256 +136,3 @@
         public string? Error { get; set; }
     }
 }
-
-
-
-
-@*
-@page "/cv"
-@using System.Text
-@using CvParser.Infrastructure.Services
-@rendermode InteractiveServer
-@inject IWebHostEnvironment WebHostEnv
-@inject HttpClient HttpIAi
-@inject IJSRuntime JS
-@inject IConfiguration Configuration
-@inject IHttpContextAccessor HttpContextAccessor
-@inject ISessionStorageService SessionStorageService
-
-<PageTitle>Home</PageTitle>
-<h1>Upload a CV</h1>
-
-<div class="container d-flex ms-5">
-	<div class="col-sm-4 mt-4" style="display:inline-block">
-		<EditForm Model="fileModel" FormName="file-form" enctype="multipart/form-data" OnSubmit="HandleFileUpload">
-			<div>
-				<InputFile name="fileModel.File" OnChange="HandleFileSelected" class="form-control form-control-dev" />
-			</div>
-			<div class="my-4 d-flex align-items-center">
-				<input type="submit" class="btn btn-dev rounded-pill shadow px-5" value="Ladda upp" />
-				<div id="upload-spinner" class="spinner-border visually-hidden text-dev d-inline-flex ms-4" role="status"></div>
-				<button type="button" id="btn-download" class="btn btn-dev rounded-pill shadow ml-6 px-5 visually-hidden" @onclick="HandleCreateNewCV">Download</button>
-			</div>
-		</EditForm>
-
-		@if (!string.IsNullOrWhiteSpace(_successMessage))
-		{
-			<div class="alert alert-success">@_successMessage</div>
-		}
-		@if (!string.IsNullOrWhiteSpace(_errorMessage))
-		{
-			<div class="alert alert-danger">@_errorMessage</div>
-		}
-
-		@if (!string.IsNullOrEmpty(_profileImage))
-		{
-			<img src="data:image;base64, @_profileImage" style="max-width: 200px;"/>
-		}
-
-	</div>
-</div>
-
-@if (!string.IsNullOrWhiteSpace(_resultJson))
-{    
-	string encodedJson = HttpUtility.HtmlEncode(_resultJson);
-	string htmlFormattedJson = Regex.Replace(encodedJson, @"\r\n", "<br />").Replace("\n", "<br/>");
-	var formattedJsonResult = new MarkupString(htmlFormattedJson);
-
-	<pre style="background-color: #f8f9fa; padding: 1rem; border-radius: 5px; width:50%;">
-		@formattedJsonResult
-	</pre>
-}
-
-<script type="text/javascript">    
-	function showSpinner() {
-	var element = document.getElementById("upload-spinner");
-	element.classList.remove("visually-hidden");
-	}
-
-	function hideSpinner() {
-	var element = document.getElementById("upload-spinner");
-	element.classList.add("visually-hidden");
-	}
-
-	function showDownloadButton() {
-	var element = document.getElementById("btn-download");
-	element.classList.remove("visually-hidden");
-	}
-
-	function hideDownloadButton() {
-	var element = document.getElementById("btn-download");
-	element.classList.add("visually-hidden");
-	}
-
-	window.downloadFileFromStream = async (fileName, contentStreamReference) => {
-	const arrayBuffer = await contentStreamReference.arrayBuffer();
-	const blob = new Blob([arrayBuffer]);
-	const url = URL.createObjectURL(blob);
-	const anchorElement = document.createElement('a');
-	anchorElement.href = url;
-	anchorElement.download = fileName ?? 'download';
-	anchorElement.click();
-	anchorElement.remove();
-	URL.revokeObjectURL(url);
-	}
-</script>
-
-@code {
-	[SupplyParameterFromForm(FormName = "file-form")]
-	private FileModel fileModel { get; set; } = new();
-	private string? _errorMessage;
-	private string? _successMessage;
-	private string? _resultJson;
-	private string? _profileImage;
-
-	private static readonly HashSet<string> AllowedExtensions = new HashSet<string>([".pdf", ".doc", ".docx"], StringComparer.OrdinalIgnoreCase);
-	private static int MaxFileSize;
-
-	protected override void OnInitialized()
-	{
-		MaxFileSize = int.TryParse(Configuration["MaxFileUploadSizeInMegaByte"], out var settingValue) ? settingValue * 1024 * 1024 : 5 * 1024 * 1024; // Fallback 5MB
-	}
-
-	private void HandleFileSelected(InputFileChangeEventArgs e)
-	{
-		fileModel.File = e.File;
-	}
-
-	private async Task HandleFileUpload()
-	{
-		await ResetMessageBoxes();
-		await ShowSpinner();
-		_errorMessage = string.Empty;
-		_successMessage = string.Empty;
-
-		if (fileModel.File == null)
-		{
-			await SetMessage(false, CvResponseMessages.NoFileSelected);
-			return;
-		}
-
-		if (fileModel.File.Size > MaxFileSize)
-		{
-			await SetMessage(false, CvResponseMessages.FileIsTooLarge);
-			return;
-		}
-
-		var extension = Path.GetExtension(fileModel.File.Name);
-		if (!AllowedExtensions.Contains(extension))
-		{
-			await SetMessage(false, CvResponseMessages.InvalidFileType);
-			return;
-		}
-
-		try
-		{
-			var content = new MultipartFormDataContent();
-			var streamContent = new StreamContent(fileModel.File.OpenReadStream(maxAllowedSize: MaxFileSize));
-			content.Add(streamContent, "file", fileModel.File.Name);
-
-			var response = await HttpIAi.PostAsync("api/cv/send", content);
-
-			if (response.IsSuccessStatusCode)
-			{                
-				var cv = await response.Content.ReadFromJsonAsync<Cv>();				
-
-				await SessionStorageService.SetItem<Cv?>("CV", cv);
-				// if (cv.Basics.ImageBase64?.Length > 150) { _profileImage = cv.Basics.ImageBase64; cv.Basics.ImageBase64 = $"{cv.Basics.ImageBase64.Substring(0, 150)} ..."; }
-				// if (cv.Basics.Summary?.Length > 150) { cv.Basics.Summary = $"{cv.Basics.Summary.Substring(0, 150)} ..."; }
-				_profileImage = cv?.Basics.ImageBase64;
-				await SetDetailedInfo(cv);
-				await SetMessage(true, CvResponseMessages.FileUploadSuccess);
-				await HideSpinner();
-				await ShowDownloadButton();
-			}
-			else
-			{
-				await SetMessage(false, $"{CvResponseMessages.ErrorDownloadingFile} {response.ReasonPhrase}");
-			}
-		}
-		catch (Exception ex)
-		{
-			await SetMessage(false, $"{CvResponseMessages.ErrorOccurredDuringFileDownload} {ex.Message}");
-		}
-	}
-
-	private async Task HandleCreateNewCV(MouseEventArgs args)
-	{
-		await ShowSpinner();
-		var cv = SessionStorageService.GetItem<Cv>("CV");
-
-		var response = await HttpIAi.PostAsJsonAsync("api/cv/create", cv);		
-
-		if (response.IsSuccessStatusCode)
-		{
-			var fileName = $"{cv?.Basics.Name} {DateTime.Now.ToString("yyyyMMdd-HHmm")}.docx";
-			var stream = await response.Content.ReadAsStreamAsync();
-			var dotNetStreamRef = new DotNetStreamReference(stream);
-			await JS.InvokeVoidAsync("downloadFileFromStream", fileName, dotNetStreamRef);
-
-			await SetMessage(true, CvResponseMessages.NewXameraCvCreated);
-		}
-		else
-		{
-			await SetMessage(false, $"{CvResponseMessages.ErrorNewXameraCvCreated} : {response.ReasonPhrase}");
-		}
-
-		await HideSpinner();
-	}
-
-
-	private async Task SetDetailedInfo(Cv? cv = null)
-	{
-		if (cv is not null)
-		{
-			_resultJson = JsonSerializer.Serialize(cv, new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
-		}
-		else
-		{
-			_resultJson = "";
-		}
-		await Task.CompletedTask;
-	}
-
-	private async Task SetMessage(bool success, string message)
-	{
-		if (success)
-		{
-			_successMessage = message;
-			_errorMessage = String.Empty;
-		}
-		else
-		{
-			_errorMessage = message;
-			_successMessage = String.Empty;
-		}
-
-		await HideSpinner();
-	}
-
-	private async Task ShowSpinner()
-	{
-		await JS.InvokeVoidAsync("showSpinner", String.Empty);
-	}
-	private async Task HideSpinner()
-	{
-		await JS.InvokeVoidAsync("hideSpinner", String.Empty);
-	}
-	private async Task ShowDownloadButton()
-	{
-		await JS.InvokeVoidAsync("showDownloadButton", String.Empty);
-	}
-	private async Task HideDownloadButton()
-	{
-		await JS.InvokeVoidAsync("hideDownloadButton", String.Empty);
-	}
-	private async Task ResetMessageBoxes()
-	{
-		await HideDownloadButton();
-		_successMessage = String.Empty;
-		_errorMessage = String.Empty;
-		_profileImage = String.Empty;
-		_resultJson = String.Empty;
-	}	
-}
-*@

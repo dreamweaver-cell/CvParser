@@ -4,25 +4,32 @@ Put your OpenAI API key in the appsettings.json file located in the CvParser.Web
  "ApiKey": "sk-your-openai-api-key-here"
 
 
-# CvDocumentGenerator Service
-Detta dokument ger en översikt av CvDocumentGenerator-tjänsten, dess huvudsyfte och föreslagna förbättringar baserade på en kodanalys.
+# CvParser
 
-## Syfte
-CvDocumentGenerator är en C#-tjänst designad för att dynamiskt generera ett komplett Word-dokument (.docx) från ett Cv-dataobjekt. Den använder OpenXML SDK för att fylla en fördefinierad mall med personlig information, arbetslivserfarenheter, kompetenser och andra detaljer.
+This document provides an overview of the **CvParser** service.
 
-Tjänsten hanterar följande huvudfunktionalitet:
+## Purpose
 
-Mallval: Väljer automatiskt rätt mall baserat på språk (t.ex. svenska eller engelska).
+CvParser is a .NET service designed to dynamically generate a complete Word document (.docx) from a CV data object.
+It uses the **OpenXML SDK** to fill a predefined template with personal information, work experiences, skills, and other details.
 
-Textutbyte: Ersätter textplatshållare i mallen (som |name| och |workexperiences|) med data från CV-objektet.
+The service provides the following main functionality:
 
-Bildhantering: Hanterar infogning av profilbilder, med en smart funktion som antingen byter ut bilddata i en befintlig platshållare (och bevarar formatet) eller infogar en ny bild om ingen platshållare hittas.
+* **Template selection** – Automatically chooses the correct template based on language (Swedish or English).
+* **Text replacement** – Replaces text placeholders in the template (such as `|name|` and `|workexperiences|`) with data from the CV object.
+* **Image handling** – Inserts profile images, with the ability to replace image data inside an existing picture while preserving its formatting.
 
-## Förklaring av flödet
-Inmatning och validering: Processen börjar när en användare laddar upp en CV-fil. Systemet validerar filformatet för att säkerställa att det är en typ som kan behandlas, som exempelvis PDF eller DOCX.
+## Flow Explanation
 
-Textutvinning: Därefter extraheras all rå text från dokumentet. För vissa filtyper eller skannade CV:n kan detta kräva optisk teckenigenkänning (OCR).
+* **Input and validation** – The process begins when a user uploads a CV file.
+  The system validates the file format to ensure it is supported, such as PDF or DOCX.
 
-Parsing och strukturering: Detta är den mest kritiska delen av processen. Den utvunna råtexten analyseras för att identifiera olika sektioner (som arbetslivserfarenhet, utbildning och färdigheter) och extrahera specifika entiteter som namn, datum, företag och titlar. Datat rensas och normaliseras för att vara konsekvent.
+* **Text extraction** – All raw text is extracted from the uploaded document.
 
-Strukturerad utdata: Slutligen konverteras den strukturerade informationen till ett standardformat, oftast ett JSON-objekt, som sedan kan användas av andra system, till exempel en databas eller ett rekryteringsverktyg.
+* **Parsing and structuring** – The extracted raw text is analyzed to identify different sections
+  (such as work experience, education, and skills) and to extract specific entities like names, dates, companies, and job titles.
+  The data is cleaned and normalized for consistency.
+
+* **Structured output** – Finally, the structured information is converted into a standard format (JSON object),
+  which is then used to generate the final **Xamera CV**.
+

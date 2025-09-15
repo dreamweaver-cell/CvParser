@@ -60,5 +60,6 @@
       "fluency": "string"
     }
   ],
-  "other": [ "string" ]
+  "other": [ "string" ],
+  "locale": "string"
 }
